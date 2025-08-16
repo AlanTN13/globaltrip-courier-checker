@@ -127,6 +127,13 @@ div[data-testid="stNumberInput"] label,
 div[data-testid="stTextArea"] label{
   color:var(--ink) !important; font-weight:600 !important;
 }
+
+/* Fix color opciones del radio (China / Otro) */
+[data-testid="stRadio"] div[role="radiogroup"] label,
+[data-testid="stRadio"] div[role="radiogroup"] p,
+[data-testid="stRadio"] div[role="radiogroup"] span{
+  color:var(--ink) !important;
+}
 </style>
 """, unsafe_allow_html=True)
 
