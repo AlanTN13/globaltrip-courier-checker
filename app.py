@@ -128,7 +128,8 @@ div[data-testid="stTextArea"] label{
   color:var(--ink) !important; font-weight:600 !important;
 }
 
-/* Fix color opciones del radio (China / Otro) */
+/* Fix radio group */
+[data-testid="stRadio"] > label{ color:var(--ink) !important; font-weight:600 !important; }
 [data-testid="stRadio"] div[role="radiogroup"] label,
 [data-testid="stRadio"] div[role="radiogroup"] p,
 [data-testid="stRadio"] div[role="radiogroup"] span{
