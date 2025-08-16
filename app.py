@@ -150,7 +150,7 @@ div[data-testid="stTextArea"] label{
 # -------------------- Estado --------------------
 FACTOR_VOL = 5000
 def init_state():
-    st.session_state.setdefault("rows", [{"cant":0, "ancho":0, "alto":0, "largo":0}])
+    st.session_state.setdefault("rows", [])  # sin bultos
     st.session_state.setdefault("productos", [{"descripcion":"", "link":""}])
     st.session_state.setdefault("nombre","")
     st.session_state.setdefault("email","")
@@ -199,16 +199,10 @@ def validate():
         errs.append("• Cargá al menos un producto con descripción y link.")
     if st.session_state.pais_origen == "Otro" and not st.session_state.pais_origen_otro.strip():
         errs.append("• Indicá el país de origen.")
-    if not any(
-        to_float(r["cant"])>0 and (to_float(r["ancho"])+to_float(r["alto"])+to_float(r["largo"]))>0
-        for r in st.session_state.rows
-    ):
-        errs.append("• Ingresá al menos un bulto con cantidad y medidas.")
+    # (Sin validación de bultos)
     return errs
 
-# -------------------- Callbacks --------------------
-def add_row(): st.session_state.rows.append({"cant": 0, "ancho": 0, "alto": 0, "largo": 0})
-def clear_rows(): st.session_state.rows = [{"cant": 0, "ancho": 0, "alto": 0, "largo": 0}]
+# -------------------- Callbacks Productos --------------------
 def add_producto(): st.session_state.productos.append({"descripcion":"", "link":""})
 def clear_productos(): st.session_state.productos = [{"descripcion":"", "link":""}]
 
@@ -268,7 +262,6 @@ for i, p in enumerate(st.session_state.productos):
     with col_del:
         if st.button("🗑️ Eliminar producto", key=f"del_prod_{i}", use_container_width=True):
             del_prod_idx = i
-    # separador entre ítems
     st.markdown('<div class="gt-item-divider"></div>', unsafe_allow_html=True)
 
 if del_prod_idx is not None:
@@ -278,37 +271,6 @@ st.markdown('<div class="gt-actions-row">', unsafe_allow_html=True)
 pA, pB = st.columns(2)
 with pA: st.button("➕ Agregar producto", on_click=add_producto, use_container_width=True)
 with pB: st.button("🧹 Vaciar productos", on_click=clear_productos, use_container_width=True)
-st.markdown('</div>', unsafe_allow_html=True)
-st.markdown('</div>', unsafe_allow_html=True)
-
-st.markdown('<div class="gt-section"><div class="gt-divider"></div></div>', unsafe_allow_html=True)
-
-# -------------------- Bultos --------------------
-st.markdown('<div class="gt-section">', unsafe_allow_html=True)
-st.subheader("Bultos")
-st.caption("Cargá por bulto: **cantidad** y **dimensiones en cm**. Calculamos el **peso volumétrico**.")
-
-del_row_idx = None
-for i, r in enumerate(st.session_state.rows):
-    st.markdown(f"**Bulto {i+1}**")
-    c1, c2, c3, c4 = st.columns([0.9, 1, 1, 1])
-    with c1: st.session_state.rows[i]["cant"]  = st.number_input("Cantidad",  min_value=0,   step=1,   value=int(r["cant"]),  key=f"cant_{i}")
-    with c2: st.session_state.rows[i]["ancho"] = st.number_input("Ancho (cm)", min_value=0.0, step=1.0, value=float(r["ancho"]), key=f"an_{i}")
-    with c3: st.session_state.rows[i]["alto"]  = st.number_input("Alto (cm)",  min_value=0.0, step=1.0, value=float(r["alto"]),  key=f"al_{i}")
-    with c4: st.session_state.rows[i]["largo"] = st.number_input("Largo (cm)", min_value=0.0, step=1.0, value=float(r["largo"]), key=f"lar_{i}")
-    col_del, _ = st.columns([1,3])
-    with col_del:
-        if st.button("🗑️ Eliminar bulto", key=f"del_row_{i}", use_container_width=True):
-            del_row_idx = i
-    st.markdown('<div class="gt-item-divider"></div>', unsafe_allow_html=True)
-
-if del_row_idx is not None:
-    st.session_state.rows.pop(del_row_idx)
-
-st.markdown('<div class="gt-actions-row">', unsafe_allow_html=True)
-ba, bb = st.columns(2)
-with ba: st.button("➕ Agregar bulto", on_click=add_row, use_container_width=True)
-with bb: st.button("🧹 Vaciar bultos", on_click=clear_rows, use_container_width=True)
 st.markdown('</div>', unsafe_allow_html=True)
 st.markdown('</div>', unsafe_allow_html=True)
 
@@ -324,7 +286,7 @@ with m1:
         help="Usá punto o coma para decimales (ej: 1.25)"
     )
     st.session_state.peso_bruto = to_float(st.session_state.peso_bruto_raw, 0.0)
-total_peso_vol = compute_total_vol(st.session_state.rows)
+total_peso_vol = compute_total_vol(st.session_state.rows)  # 0 si no hay bultos
 peso_aplicable = max(total_peso_vol, st.session_state.peso_bruto)
 with m2:
     st.markdown(f"<div class='gt-pill'><span>Peso aplicable (kg) 🔒</span> <b>{peso_aplicable:,.2f}</b></div>", unsafe_allow_html=True)
@@ -366,7 +328,7 @@ if submit_clicked:
             },
             "pais_origen": pais_final,
             "productos": productos_validos,
-            "bultos": st.session_state.rows,
+            "bultos": st.session_state.rows,  # queda [] si no cargan nada
             "pesos": {
                 "volumetrico_kg": total_peso_vol,
                 "bruto_kg": st.session_state.peso_bruto,
