@@ -34,7 +34,7 @@ h1,h2,h3,h4,h5,h6{ margin:8px 0 6px !important; color:var(--ink) !important; }
 .stCaption{ margin:0 0 6px !important; color:var(--muted) !important; }
 label{ margin-bottom:4px !important; }
 
-/* Secciones contenedor */
+/* Contenedor sección */
 .gt-section{ max-width:1100px; margin:0 auto; }
 .soft-card{
   background:#fff; border:1.5px solid var(--border); border-radius:var(--radius);
@@ -125,6 +125,7 @@ div.stButton > button:hover{ background:#eef3ff !important; }
   display:grid; place-items:center; background:#f6f8ff; border:1px solid #dbe6ff; color:#2a6ae6; text-decoration:none; font-size:20px;
 }
 .gt-close:hover{ background:#eef3ff; }
+
 @keyframes gt-pop{ from{ transform:translateY(6px); opacity:.0 } to{ transform:translateY(0); opacity:1 } }
 
 /* Labels visibles */
@@ -144,7 +145,7 @@ def init_state():
     st.session_state.setdefault("telefono","")
     st.session_state.setdefault("pais_origen","China")
     st.session_state.setdefault("pais_origen_otro","")
-    st.session_state.setdefault("peso_bruto_raw","0.00")
+    st.session_state.setdefault("peso_bruto_raw","0.00")      # solo peso total ingresado por el usuario
     st.session_state.setdefault("peso_bruto",0.0)
     st.session_state.setdefault("valor_mercaderia_raw","0.00")
     st.session_state.setdefault("valor_mercaderia",0.0)
@@ -162,13 +163,18 @@ def to_float(s, default=0.0):
 def post_to_webhook(payload: dict):
     url = st.secrets.get("N8N_WEBHOOK_URL", os.getenv("N8N_WEBHOOK_URL",""))
     token = st.secrets.get("N8N_TOKEN", os.getenv("N8N_TOKEN",""))
-    if not url: 
-        return True, "Sin webhook configurado."
+    if not url:
+        return True, "Sin webhook configurado (N8N_WEBHOOK_URL)."
     headers = {"Content-Type":"application/json"}
-    if token: headers["Authorization"] = f"Bearer {token}"
+    if token:
+        headers["Authorization"] = f"Bearer {token}"
     try:
-        r = requests.post(url, headers=headers, data=json.dumps(payload), timeout=15)
-        return (r.ok, f"HTTP {r.status_code}")
+        r = requests.post(url, headers=headers, data=json.dumps(payload), timeout=20)
+        ok = r.ok
+        msg = f"HTTP {r.status_code}"
+        if not ok:
+            msg += f" - {r.text[:200]}"
+        return ok, msg
     except Exception as e:
         return False, str(e)
 
@@ -199,11 +205,13 @@ st.markdown("""
 st.markdown('<div class="gt-section">', unsafe_allow_html=True)
 st.subheader("Datos de contacto")
 c1,c2,c3 = st.columns([1.1,1.1,1.0])
-with c1: st.session_state.nombre = st.text_input("Nombre completo*", value=st.session_state.nombre, placeholder="Ej: Juan Pérez")
-with c2: st.session_state.email = st.text_input("Correo electrónico*", value=st.session_state.email, placeholder="ejemplo@email.com")
-with c3: st.session_state.telefono = st.text_input("Teléfono*", value=st.session_state.telefono, placeholder="Ej: 11 5555 5555")
+with c1:
+    st.session_state.nombre = st.text_input("Nombre completo*", value=st.session_state.nombre, placeholder="Ej: Juan Pérez")
+with c2:
+    st.session_state.email = st.text_input("Correo electrónico*", value=st.session_state.email, placeholder="ejemplo@email.com")
+with c3:
+    st.session_state.telefono = st.text_input("Teléfono*", value=st.session_state.telefono, placeholder="Ej: 11 5555 5555")
 st.markdown('</div>', unsafe_allow_html=True)
-
 st.markdown('<div class="gt-section"><div class="gt-divider"></div></div>', unsafe_allow_html=True)
 
 # -------------------- País de origen --------------------
@@ -217,7 +225,6 @@ if sel == "Otro":
 else:
     st.session_state.pais_origen = "China"
 st.markdown('</div>', unsafe_allow_html=True)
-
 st.markdown('<div class="gt-section"><div class="gt-divider"></div></div>', unsafe_allow_html=True)
 
 # -------------------- Productos --------------------
@@ -254,27 +261,24 @@ with pA: st.button("➕ Agregar producto", on_click=add_producto, use_container_
 with pB: st.button("🧹 Vaciar productos", on_click=clear_productos, use_container_width=True)
 st.markdown('</div>', unsafe_allow_html=True)
 st.markdown('</div>', unsafe_allow_html=True)
-
 st.markdown('<div class="gt-section"><div class="gt-divider"></div></div>', unsafe_allow_html=True)
 
-# -------------------- Peso y valor --------------------
+# -------------------- Peso & Valor --------------------
 st.markdown('<div class="gt-section">', unsafe_allow_html=True)
-st.subheader("Peso total")
-st.session_state.peso_bruto_raw = st.text_input(
-    "Peso bruto total (kg)", value=st.session_state.peso_bruto_raw,
-    help="Usá punto o coma para decimales (ej: 1.25)"
-)
-st.session_state.peso_bruto = to_float(st.session_state.peso_bruto_raw, 0.0)
+st.subheader("Datos para validar")
+c_w, c_v = st.columns([1.0, 1.0])
+with c_w:
+    st.session_state.peso_bruto_raw = st.text_input(
+        "Peso total (kg)", value=st.session_state.peso_bruto_raw,
+        help="Usá punto o coma para decimales (ej: 1.25)"
+    )
+    st.session_state.peso_bruto = to_float(st.session_state.peso_bruto_raw, 0.0)
+with c_v:
+    st.session_state.valor_mercaderia_raw = st.text_input(
+        "Valor total (USD)", value=st.session_state.valor_mercaderia_raw, placeholder="Ej: 2500.00"
+    )
+    st.session_state.valor_mercaderia = to_float(st.session_state.valor_mercaderia_raw, 0.0)
 st.markdown('</div>', unsafe_allow_html=True)
-
-st.markdown('<div class="gt-section"><div class="gt-divider"></div></div>', unsafe_allow_html=True)
-
-st.markdown('<div class="gt-section">', unsafe_allow_html=True)
-st.subheader("Valor total del pedido")
-st.session_state.valor_mercaderia_raw = st.text_input("Valor total (USD)", value=st.session_state.valor_mercaderia_raw, placeholder="Ej: 2500.00")
-st.session_state.valor_mercaderia = to_float(st.session_state.valor_mercaderia_raw, 0.0)
-st.markdown('</div>', unsafe_allow_html=True)
-
 st.markdown('<div class="gt-section"><div class="gt-divider"></div></div>', unsafe_allow_html=True)
 
 # -------------------- Submit --------------------
@@ -301,16 +305,17 @@ if submit_clicked:
             "pais_origen": pais_final,
             "productos": productos_validos,
             "pesos": {
-                "volumetrico_kg": 0.0,
-                "bruto_kg": st.session_state.peso_bruto,
-                "aplicable_kg": st.session_state.peso_bruto
+                "bruto_kg": st.session_state.peso_bruto
             },
             "valor_mercaderia_usd": st.session_state.valor_mercaderia
         }
+        # Enviar a n8n (via secret)
         try:
-            post_to_webhook(payload)
-        except Exception:
-            pass
+            ok, msg = post_to_webhook(payload)
+            if not ok:
+                st.warning(f"No se pudo enviar al webhook: {msg}")
+        except Exception as e:
+            st.warning(f"Error al enviar: {e}")
         st.session_state.show_dialog = True
 
 # -------------------- Errores --------------------
@@ -328,7 +333,7 @@ if st.session_state.get("show_dialog", False):
     <h3 class="gt-title">¡Listo!</h3>
     <div class="gt-body">
       <p>Recibimos tu solicitud. En breve te llegará el resultado a {email_html}.</p>
-      <p style="opacity:.85;">Podés validar otro si querés.</p>
+      <p style="opacity:.85;">Podés cargar otro si querés.</p>
     </div>
     <div class="gt-actions">
       <a class="gt-btn" href="?gt=reset" target="_self">🔄 Validar otro producto</a>
