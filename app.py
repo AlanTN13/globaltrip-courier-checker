@@ -121,7 +121,7 @@ div.stButton > button:hover{ background:#eef3ff !important; }
 .gt-body a{ color:#2563eb; text-decoration:underline; }
 .gt-actions{ display:flex; gap:14px; margin-top:18px; flex-wrap:wrap; }
 
-/* Botones del modal con el mismo color que el título */
+/* Botones del modal (mismo color que el título) */
 .gt-btn{
   display:inline-flex; align-items:center; gap:8px; padding:14px 18px; border-radius:16px;
   background:#edf3ff; border:1.5px solid #cfe0ff; color:var(--ink) !important;
@@ -305,7 +305,7 @@ st.markdown('<div class="gt-section"><div class="gt-divider"></div></div>', unsa
 
 # -------------------- Submit --------------------
 st.markdown('<div id="gt-submit-btn" class="gt-section">', unsafe_allow_html=True)
-submit_clicked = st.button("🔎 Validar por courier", use_container_width=True, key="gt_submit_btn")
+submit_clicked = st.button("🔎 Validar producto", use_container_width=True, key="gt_submit_btn")
 st.markdown('</div>', unsafe_allow_html=True)
 
 if submit_clicked:
@@ -359,7 +359,7 @@ if st.session_state.get("show_dialog", False):
       <p style="opacity:.85;">Podés cargar otro si querés.</p>
     </div>
     <div class="gt-actions">
-      <a class="gt-btn" href="?gt=reset" target="_self">➕ Cargar otro</a>
+      <a class="gt-btn" href="?gt=reset" target="_self">🔄 Validar otro producto</a>
       <a class="gt-btn secondary" href="?gt=close" target="_self">Cerrar</a>
     </div>
   </div>
