@@ -92,13 +92,6 @@ div.stButton > button{
 div.stButton > button:hover{ background:#eef3ff !important; }
 #gt-submit-btn button{ width:100% !important; }
 
-/* Radios */
-[data-testid="stRadio"]{ margin-top:4px !important; margin-bottom:8px !important; }
-[data-testid="stRadio"] > label{ color:var(--muted) !important; font-weight:500 !important; margin-bottom:4px !important; }
-[data-testid="stRadio"] div[role="radiogroup"]{ display:flex !important; align-items:center !important; gap:12px !important; }
-[data-testid="stRadio"] label p{ margin:0 !important; font-size:0.95rem !important; color:var(--ink) !important; }
-[data-testid="stRadio"] input[type="radio"]{ transform:scale(0.9); accent-color:#0e1b3d; }
-
 /* ===== Popup ===== */
 .gt-overlay{
   position:fixed; inset:0; background:rgba(14,27,61,.45); backdrop-filter: blur(2.5px);
@@ -145,7 +138,7 @@ def init_state():
     st.session_state.setdefault("telefono","")
     st.session_state.setdefault("pais_origen","China")
     st.session_state.setdefault("pais_origen_otro","")
-    st.session_state.setdefault("peso_bruto_raw","0.00")      # solo peso total ingresado por el usuario
+    st.session_state.setdefault("peso_bruto_raw","0.00")
     st.session_state.setdefault("peso_bruto",0.0)
     st.session_state.setdefault("valor_mercaderia_raw","0.00")
     st.session_state.setdefault("valor_mercaderia",0.0)
@@ -170,11 +163,7 @@ def post_to_webhook(payload: dict):
         headers["Authorization"] = f"Bearer {token}"
     try:
         r = requests.post(url, headers=headers, data=json.dumps(payload), timeout=20)
-        ok = r.ok
-        msg = f"HTTP {r.status_code}"
-        if not ok:
-            msg += f" - {r.text[:200]}"
-        return ok, msg
+        return r.ok, f"HTTP {r.status_code}"
     except Exception as e:
         return False, str(e)
 
@@ -206,22 +195,27 @@ st.markdown('<div class="gt-section">', unsafe_allow_html=True)
 st.subheader("Datos de contacto")
 c1,c2,c3 = st.columns([1.1,1.1,1.0])
 with c1:
-    st.session_state.nombre = st.text_input("Nombre completo*", value=st.session_state.nombre, placeholder="Ej: Juan Pérez")
+    st.text_input("Nombre completo*", key="nombre", placeholder="Ej: Juan Pérez")
 with c2:
-    st.session_state.email = st.text_input("Correo electrónico*", value=st.session_state.email, placeholder="ejemplo@email.com")
+    st.text_input("Correo electrónico*", key="email", placeholder="ejemplo@email.com")
 with c3:
-    st.session_state.telefono = st.text_input("Teléfono*", value=st.session_state.telefono, placeholder="Ej: 11 5555 5555")
+    st.text_input("Teléfono*", key="telefono", placeholder="Ej: 11 5555 5555")
 st.markdown('</div>', unsafe_allow_html=True)
 st.markdown('<div class="gt-section"><div class="gt-divider"></div></div>', unsafe_allow_html=True)
 
 # -------------------- País de origen --------------------
 st.markdown('<div class="gt-section">', unsafe_allow_html=True)
 st.subheader("País de origen de los productos a validar")
-sel = st.radio("Seleccioná el país de origen:", ["China", "Otro"],
-               index=0 if st.session_state.pais_origen=="China" else 1, horizontal=True)
+sel = st.radio(
+    "Seleccioná el país de origen:",
+    ["China", "Otro"],
+    index=(0 if st.session_state.pais_origen == "China" else 1),
+    horizontal=True,
+    key="origen_radio",
+)
 if sel == "Otro":
     st.session_state.pais_origen = "Otro"
-    st.session_state.pais_origen_otro = st.text_input("Ingresá el país de origen", value=st.session_state.pais_origen_otro).strip()
+    st.text_input("Ingresá el país de origen", key="pais_origen_otro")
 else:
     st.session_state.pais_origen = "China"
 st.markdown('</div>', unsafe_allow_html=True)
@@ -257,8 +251,8 @@ if del_prod_idx is not None:
 
 st.markdown('<div class="gt-actions-row">', unsafe_allow_html=True)
 pA, pB = st.columns(2)
-with pA: st.button("➕ Agregar producto", on_click=add_producto, use_container_width=True)
-with pB: st.button("🧹 Vaciar productos", on_click=clear_productos, use_container_width=True)
+with pA: st.button("➕ Agregar producto", on_click=add_producto, use_container_width=True, key="add_prod_btn")
+with pB: st.button("🧹 Vaciar productos", on_click=clear_productos, use_container_width=True, key="clear_prod_btn")
 st.markdown('</div>', unsafe_allow_html=True)
 st.markdown('</div>', unsafe_allow_html=True)
 st.markdown('<div class="gt-section"><div class="gt-divider"></div></div>', unsafe_allow_html=True)
@@ -268,15 +262,10 @@ st.markdown('<div class="gt-section">', unsafe_allow_html=True)
 st.subheader("Datos para validar")
 c_w, c_v = st.columns([1.0, 1.0])
 with c_w:
-    st.session_state.peso_bruto_raw = st.text_input(
-        "Peso total (kg)", value=st.session_state.peso_bruto_raw,
-        help="Usá punto o coma para decimales (ej: 1.25)"
-    )
+    st.text_input("Peso total (kg)", key="peso_bruto_raw", help="Usá punto o coma para decimales (ej: 1.25)")
     st.session_state.peso_bruto = to_float(st.session_state.peso_bruto_raw, 0.0)
 with c_v:
-    st.session_state.valor_mercaderia_raw = st.text_input(
-        "Valor total (USD)", value=st.session_state.valor_mercaderia_raw, placeholder="Ej: 2500.00"
-    )
+    st.text_input("Valor total (USD)", key="valor_mercaderia_raw", placeholder="Ej: 2500.00")
     st.session_state.valor_mercaderia = to_float(st.session_state.valor_mercaderia_raw, 0.0)
 st.markdown('</div>', unsafe_allow_html=True)
 st.markdown('<div class="gt-section"><div class="gt-divider"></div></div>', unsafe_allow_html=True)
@@ -304,12 +293,9 @@ if submit_clicked:
             },
             "pais_origen": pais_final,
             "productos": productos_validos,
-            "pesos": {
-                "bruto_kg": st.session_state.peso_bruto
-            },
+            "pesos": { "bruto_kg": st.session_state.peso_bruto },
             "valor_mercaderia_usd": st.session_state.valor_mercaderia
         }
-        # Enviar a n8n (via secret)
         try:
             ok, msg = post_to_webhook(payload)
             if not ok:
