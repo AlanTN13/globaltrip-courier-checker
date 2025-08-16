@@ -31,8 +31,8 @@ section.main > div.block-container{ padding-top:8px !important; padding-bottom:v
 
 /* Tipografía */
 h1,h2,h3,h4,h5,h6{ margin:8px 0 6px !important; color:var(--ink) !important; }
+label{ margin-bottom:4px !important; color:var(--ink) !important; } /* forzamos color de labels */
 .stCaption{ margin:0 0 6px !important; color:var(--muted) !important; }
-label{ margin-bottom:4px !important; }
 
 /* Contenedor sección */
 .gt-section{ max-width:1100px; margin:0 auto; }
@@ -82,15 +82,18 @@ div[data-testid="stNumberInput"] button{
   border-radius:10px !important; box-shadow:none !important;
 }
 
-/* Botones */
-div.stButton{ margin:0 !important; }
-div.stButton > button{
-  width:100%; background:#f7faff !important; color:var(--ink) !important;
-  border:1.5px solid var(--border) !important; border-radius:var(--radius) !important;
-  padding:10px var(--s2) !important; box-shadow:var(--shadow) !important;
+/* Radio (forzamos color del título también) */
+[data-testid="stRadio"] > label{ color:var(--ink) !important; font-weight:600 !important; }
+[data-testid="stRadio"] div[role="radiogroup"]{ display:flex !important; align-items:center !important; gap:12px !important; }
+[data-testid="stRadio"] label p{ margin:0 !important; font-size:0.95rem !important; color:var(--ink) !important; }
+[data-testid="stRadio"] input[type="radio"]{ transform:scale(0.9); accent-color:#0e1b3d; }
+
+/* Alerts (errores / avisos) con texto oscuro */
+div[data-testid="stAlert"]{
+  border:1.5px solid #f2c8c8 !important; background:#fdeeee !important; color:var(--ink) !important;
+  border-radius:16px !important;
 }
-div.stButton > button:hover{ background:#eef3ff !important; }
-#gt-submit-btn button{ width:100% !important; }
+div[data-testid="stAlert"] *{ color:var(--ink) !important; }
 
 /* ===== Popup ===== */
 .gt-overlay{
@@ -121,19 +124,11 @@ div.stButton > button:hover{ background:#eef3ff !important; }
 
 @keyframes gt-pop{ from{ transform:translateY(6px); opacity:.0 } to{ transform:translateY(0); opacity:1 } }
 
-/* Labels visibles */
+/* Labels visibles en inputs */
 div[data-testid="stTextInput"] label,
 div[data-testid="stNumberInput"] label,
 div[data-testid="stTextArea"] label{
   color:var(--ink) !important; font-weight:600 !important;
-}
-
-/* Fix radio group */
-[data-testid="stRadio"] > label{ color:var(--ink) !important; font-weight:600 !important; }
-[data-testid="stRadio"] div[role="radiogroup"] label,
-[data-testid="stRadio"] div[role="radiogroup"] p,
-[data-testid="stRadio"] div[role="radiogroup"] span{
-  color:var(--ink) !important;
 }
 </style>
 """, unsafe_allow_html=True)
@@ -152,6 +147,7 @@ def init_state():
     st.session_state.setdefault("valor_mercaderia",0.0)
     st.session_state.setdefault("show_dialog", False)
     st.session_state.setdefault("form_errors", [])
+    st.session_state.setdefault("post_status", None)
 init_state()
 
 # -------------------- Helpers --------------------
@@ -304,17 +300,13 @@ if submit_clicked:
             "pesos": { "bruto_kg": st.session_state.peso_bruto },
             "valor_mercaderia_usd": st.session_state.valor_mercaderia
         }
-        try:
-            ok, msg = post_to_webhook(payload)
-            if not ok:
-                st.warning(f"No se pudo enviar al webhook: {msg}")
-        except Exception as e:
-            st.warning(f"Error al enviar: {e}")
+        ok, msg = post_to_webhook(payload)
+        st.session_state.post_status = {"ok": ok, "msg": msg}  # guardo, no muestro para evitar banda amarilla
         st.session_state.show_dialog = True
 
 # -------------------- Errores --------------------
 if st.session_state.form_errors:
-    st.error("Revisá estos puntos:\n\n" + "\n".join(st.session_state.form_errors))
+    st.error("Revisá estos puntos:\n\n" + " ".join(st.session_state.form_errors))
 
 # -------------------- Popup --------------------
 if st.session_state.get("show_dialog", False):
