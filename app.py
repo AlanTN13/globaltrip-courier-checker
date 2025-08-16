@@ -6,8 +6,8 @@ import streamlit as st
 
 # -------------------- Config --------------------
 st.set_page_config(
-    page_title="Cotizador GlobalTrip",
-    page_icon="📦",
+    page_title="Validador Courier",
+    page_icon="🧾",
     layout="wide",
     initial_sidebar_state="collapsed",
 )
@@ -78,7 +78,7 @@ div[data-testid="stNumberInput"] > div > div:nth-child(2){
   background:#fff !important; border-left:1.5px solid var(--border) !important; border-radius:0 24px 24px 0 !important; padding:2px !important;
 }
 div[data-testid="stNumberInput"] button{
-  background:#eef3ff !important; color:var(--ink) !important; border:1px solid var(--border) !important;
+  background:#eef3ff !important; color:var(--ink) !important; border:1.5px solid var(--border) !important;
   border-radius:10px !important; box-shadow:none !important;
 }
 
@@ -199,7 +199,6 @@ def validate():
         errs.append("• Cargá al menos un producto con descripción y link.")
     if st.session_state.pais_origen == "Otro" and not st.session_state.pais_origen_otro.strip():
         errs.append("• Indicá el país de origen.")
-    # (Sin validación de bultos)
     return errs
 
 # -------------------- Callbacks Productos --------------------
@@ -209,8 +208,8 @@ def clear_productos(): st.session_state.productos = [{"descripcion":"", "link":"
 # -------------------- Header --------------------
 st.markdown("""
 <div class="soft-card gt-section">
-  <h2 style="margin:0;">📦 Cotización de Envío por Courier</h2>
-  <p style="margin:6px 0 0;">Completá tus datos, el producto y sus medidas, y te enviamos la cotización por mail.</p>
+  <h2 style="margin:0;">Chequeá tu importación antes de comprar</h2>
+  <p style="margin:6px 0 0;">⚡ Ingresá la info del producto y validá si cumple con las reglas de courier.</p>
 </div>
 """, unsafe_allow_html=True)
 
@@ -227,7 +226,7 @@ st.markdown('<div class="gt-section"><div class="gt-divider"></div></div>', unsa
 
 # -------------------- País de origen --------------------
 st.markdown('<div class="gt-section">', unsafe_allow_html=True)
-st.subheader("País de origen de los productos a cotizar")
+st.subheader("País de origen de los productos a validar")
 sel = st.radio("Seleccioná el país de origen:", ["China", "Otro"],
                index=0 if st.session_state.pais_origen=="China" else 1, horizontal=True)
 if sel == "Otro":
@@ -251,7 +250,7 @@ for i, p in enumerate(st.session_state.productos):
     with pc1:
         st.session_state.productos[i]["descripcion"] = st.text_area(
             "Descripción*", value=p["descripcion"], key=f"prod_desc_{i}",
-            placeholder='Ej: "Máquina selladora de bolsas"', height=80
+            placeholder='Ej: "Reloj inteligente con Bluetooth"', height=80
         )
     with pc2:
         st.session_state.productos[i]["link"] = st.text_area(
@@ -306,7 +305,7 @@ st.markdown('<div class="gt-section"><div class="gt-divider"></div></div>', unsa
 
 # -------------------- Submit --------------------
 st.markdown('<div id="gt-submit-btn" class="gt-section">', unsafe_allow_html=True)
-submit_clicked = st.button("📨 Solicitar cotización", use_container_width=True, key="gt_submit_btn")
+submit_clicked = st.button("🔎 Validar por courier", use_container_width=True, key="gt_submit_btn")
 st.markdown('</div>', unsafe_allow_html=True)
 
 if submit_clicked:
@@ -319,7 +318,7 @@ if submit_clicked:
         pais_final = st.session_state.pais_origen if st.session_state.pais_origen == "China" else st.session_state.pais_origen_otro.strip()
         payload = {
             "timestamp": datetime.utcnow().isoformat(),
-            "origen": "streamlit-cotizador",
+            "origen": "streamlit-courier-checker",
             "factor_vol": FACTOR_VOL,
             "contacto": {
                 "nombre": st.session_state.nombre.strip(),
@@ -328,7 +327,7 @@ if submit_clicked:
             },
             "pais_origen": pais_final,
             "productos": productos_validos,
-            "bultos": st.session_state.rows,  # queda [] si no cargan nada
+            "bultos": st.session_state.rows,  # []
             "pesos": {
                 "volumetrico_kg": total_peso_vol,
                 "bruto_kg": st.session_state.peso_bruto,
@@ -356,11 +355,11 @@ if st.session_state.get("show_dialog", False):
     <a class="gt-close" href="?gt=close" target="_self">✕</a>
     <h3 class="gt-title">¡Listo!</h3>
     <div class="gt-body">
-      <p>Recibimos tu solicitud. En breve te llegará la cotización a {email_html}.</p>
-      <p style="opacity:.85;">Podés cargar otra si querés.</p>
+      <p>Recibimos tu solicitud. En breve te llegará el resultado a {email_html}.</p>
+      <p style="opacity:.85;">Podés cargar otro si querés.</p>
     </div>
     <div class="gt-actions">
-      <a class="gt-btn" href="?gt=reset" target="_self">➕ Cargar otra cotización</a>
+      <a class="gt-btn" href="?gt=reset" target="_self">➕ Cargar otro</a>
       <a class="gt-btn secondary" href="?gt=close" target="_self">Cerrar</a>
     </div>
   </div>
