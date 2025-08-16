@@ -31,7 +31,7 @@ section.main > div.block-container{ padding-top:8px !important; padding-bottom:v
 
 /* Tipografía */
 h1,h2,h3,h4,h5,h6{ margin:8px 0 6px !important; color:var(--ink) !important; }
-label{ margin-bottom:4px !important; color:var(--ink) !important; } /* forzamos color de labels */
+label{ margin-bottom:4px !important; color:var(--ink) !important; }
 .stCaption{ margin:0 0 6px !important; color:var(--muted) !important; }
 
 /* Contenedor sección */
@@ -82,13 +82,37 @@ div[data-testid="stNumberInput"] button{
   border-radius:10px !important; box-shadow:none !important;
 }
 
-/* Radio (forzamos color del título también) */
+/* Radio */
 [data-testid="stRadio"] > label{ color:var(--ink) !important; font-weight:600 !important; }
 [data-testid="stRadio"] div[role="radiogroup"]{ display:flex !important; align-items:center !important; gap:12px !important; }
 [data-testid="stRadio"] label p{ margin:0 !important; font-size:0.95rem !important; color:var(--ink) !important; }
 [data-testid="stRadio"] input[type="radio"]{ transform:scale(0.9); accent-color:#0e1b3d; }
 
-/* Alerts (errores / avisos) con texto oscuro */
+/* Botones Streamlit (forzar look claro) */
+div.stButton{ margin:0 !important; }
+div.stButton > button,
+button[kind="secondary"],
+button[kind="primary"],
+[data-testid="baseButton-secondary"],
+[data-testid="baseButton-primary"]{
+  width:100%;
+  background:#f7faff !important;
+  color:var(--ink) !important;
+  border:1.5px solid var(--border) !important;
+  border-radius:var(--radius) !important;
+  padding:10px var(--s2) !important;
+  box-shadow:var(--shadow) !important;
+  filter:none !important;
+}
+div.stButton > button:hover,
+button[kind="secondary"]:hover,
+button[kind="primary"]:hover,
+[data-testid="baseButton-secondary"]:hover,
+[data-testid="baseButton-primary"]:hover{
+  background:#eef3ff !important; color:var(--ink) !important;
+}
+
+/* Alerts con texto oscuro */
 div[data-testid="stAlert"]{
   border:1.5px solid #f2c8c8 !important; background:#fdeeee !important; color:var(--ink) !important;
   border-radius:16px !important;
@@ -301,7 +325,7 @@ if submit_clicked:
             "valor_mercaderia_usd": st.session_state.valor_mercaderia
         }
         ok, msg = post_to_webhook(payload)
-        st.session_state.post_status = {"ok": ok, "msg": msg}  # guardo, no muestro para evitar banda amarilla
+        st.session_state.post_status = {"ok": ok, "msg": msg}
         st.session_state.show_dialog = True
 
 # -------------------- Errores --------------------
