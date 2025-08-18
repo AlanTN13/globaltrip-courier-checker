@@ -67,27 +67,6 @@ div[data-testid="stTextInput"] input::placeholder,
 div[data-testid="stTextArea"] textarea::placeholder{ color:#94a3b8 !important; }
 textarea{ min-height:80px !important; }
 
-/* NumberInput */
-div[data-testid="stNumberInput"] > div{
-  background:#fff !important; border:1.5px solid var(--border) !important; border-radius:24px !important; box-shadow:none !important;
-}
-div[data-testid="stNumberInput"] input{
-  background:#fff !important; color:var(--ink) !important; height:42px !important; padding:0 var(--s2) !important; border:none !important;
-}
-div[data-testid="stNumberInput"] > div > div:nth-child(2){
-  background:#fff !important; border-left:1.5px solid var(--border) !important; border-radius:0 24px 24px 0 !important; padding:2px !important;
-}
-div[data-testid="stNumberInput"] button{
-  background:#eef3ff !important; color:var(--ink) !important; border:1.5px solid var(--border) !important;
-  border-radius:10px !important; box-shadow:none !important;
-}
-
-/* Radio */
-[data-testid="stRadio"] > label{ color:var(--ink) !important; font-weight:600 !important; }
-[data-testid="stRadio"] div[role="radiogroup"]{ display:flex !important; align-items:center !important; gap:12px !important; }
-[data-testid="stRadio"] label p{ margin:0 !important; font-size:0.95rem !important; color:var(--ink) !important; }
-[data-testid="stRadio"] input[type="radio"]{ transform:scale(0.9); accent-color:#0e1b3d; }
-
 /* Botones Streamlit */
 div.stButton{ margin:0 !important; }
 div.stButton > button,
@@ -146,11 +125,8 @@ div[data-testid="stAlert"] *{ color:var(--ink) !important; }
 }
 .gt-close:hover{ background:#eef3ff; }
 
-@keyframes gt-pop{ from{ transform:translateY(6px); opacity:.0 } to{ transform:translateY(0); opacity:1 } }
-
 /* Labels visibles en inputs */
 div[data-testid="stTextInput"] label,
-div[data-testid="stNumberInput"] label,
 div[data-testid="stTextArea"] label{
   color:var(--ink) !important; font-weight:600 !important;
 }
@@ -160,40 +136,17 @@ div[data-testid="stTextArea"] label{
 # -------------------- Estado --------------------
 def init_state():
     st.session_state.setdefault("productos", [{"descripcion":"", "link":""}])
-    st.session_state.setdefault("rows", [{"cant":0, "ancho":0, "alto":0, "largo":0}])
     st.session_state.setdefault("nombre","")
     st.session_state.setdefault("email","")
     st.session_state.setdefault("telefono","")
     st.session_state.setdefault("pais_origen","China")
     st.session_state.setdefault("pais_origen_otro","")
-    st.session_state.setdefault("peso_bruto_num", 0.0)
-    st.session_state.setdefault("valor_mercaderia_num", 0.0)
-    st.session_state.setdefault("peso_bruto",0.0)
-    st.session_state.setdefault("valor_mercaderia",0.0)
     st.session_state.setdefault("show_dialog", False)
     st.session_state.setdefault("form_errors", [])
     st.session_state.setdefault("post_status", None)
 init_state()
 
 # -------------------- Helpers --------------------
-FACTOR_VOL = 5000
-def to_float(s, default=0.0):
-    try:
-        return float(str(s).replace(",",".")) if s not in (None,"") else default
-    except:
-        return default
-
-def compute_total_vol(rows):
-    total = 0.0
-    for r in rows:
-        total += (
-            to_float(r.get("cant",0)) *
-            to_float(r.get("ancho",0)) *
-            to_float(r.get("alto",0)) *
-            to_float(r.get("largo",0))
-        ) / FACTOR_VOL
-    return round(total, 2)
-
 def post_to_webhook(payload: dict):
     url = st.secrets.get("N8N_WEBHOOK_URL", os.getenv("N8N_WEBHOOK_URL",""))
     token = st.secrets.get("N8N_TOKEN", os.getenv("N8N_TOKEN",""))
@@ -222,8 +175,6 @@ def validate():
 # -------------------- Callbacks --------------------
 def add_producto(): st.session_state.productos.append({"descripcion":"", "link":""})
 def clear_productos(): st.session_state.productos = [{"descripcion":"", "link":""}]
-def add_row(): st.session_state.rows.append({"cant":0, "ancho":0, "alto":0, "largo":0})
-def clear_rows(): st.session_state.rows = [{"cant":0, "ancho":0, "alto":0, "largo":0}]
 
 # -------------------- Header --------------------
 st.markdown("""
@@ -232,6 +183,23 @@ st.markdown("""
   <p style="margin:6px 0 0;">⚡ Ingresá la info del producto y validá si cumple con las reglas de courier.</p>
 </div>
 """, unsafe_allow_html=True)
+
+# -------------------- Leyenda / Reglas --------------------
+st.markdown('<div class="gt-section">', unsafe_allow_html=True)
+st.markdown(
+    """
+<div class="soft-card" style="border-color:#dbe6ff;background:#f7faff">
+  <p style="margin:0 0 6px;color:#0e1b3d;"><b>Recordá las reglas del courier:</b></p>
+  <p style="margin:0;color:#0e1b3d;opacity:.95;"><i>
+  El valor total de la compra no puede superar los <b>3000 dólares</b> y el
+  <b>peso de cada bulto</b> no puede superar los <b>50 kilogramos brutos</b>.
+  </i></p>
+</div>
+""",
+    unsafe_allow_html=True,
+)
+st.markdown('</div>', unsafe_allow_html=True)
+st.markdown('<div class="gt-section"><div class="gt-divider"></div></div>', unsafe_allow_html=True)
 
 # -------------------- Datos de contacto --------------------
 st.markdown('<div class="gt-section">', unsafe_allow_html=True)
@@ -292,73 +260,6 @@ st.markdown('</div>', unsafe_allow_html=True)
 st.markdown('</div>', unsafe_allow_html=True)
 st.markdown('<div class="gt-section"><div class="gt-divider"></div></div>', unsafe_allow_html=True)
 
-# -------------------- Bultos (anti-reset) --------------------
-st.markdown('<div class="gt-section">', unsafe_allow_html=True)
-st.subheader("Bultos")
-st.caption("Cargá por bulto: **cantidad** y **dimensiones en cm**. Calculamos el **peso volumétrico**.")
-
-for i, r in enumerate(st.session_state.rows):
-    cant_key = f"cant_{i}"; an_key = f"an_{i}"; al_key = f"al_{i}"; lar_key = f"lar_{i}"
-    if cant_key not in st.session_state: st.session_state[cant_key] = int(r["cant"])
-    if an_key not in st.session_state:   st.session_state[an_key]   = float(r["ancho"])
-    if al_key not in st.session_state:   st.session_state[al_key]   = float(r["alto"])
-    if lar_key not in st.session_state:  st.session_state[lar_key]  = float(r["largo"])
-
-    st.markdown(f"**Bulto {i+1}**")
-    c1, c2, c3, c4 = st.columns([0.9, 1, 1, 1])
-    with c1:
-        st.number_input("Cantidad", min_value=0, step=1, key=cant_key)
-        st.session_state.rows[i]["cant"] = int(st.session_state[cant_key])
-    with c2:
-        st.number_input("Ancho (cm)", min_value=0.0, step=1.0, key=an_key)
-        st.session_state.rows[i]["ancho"] = float(st.session_state[an_key])
-    with c3:
-        st.number_input("Alto (cm)", min_value=0.0, step=1.0, key=al_key)
-        st.session_state.rows[i]["alto"] = float(st.session_state[al_key])
-    with c4:
-        st.number_input("Largo (cm)", min_value=0.0, step=1.0, key=lar_key)
-        st.session_state.rows[i]["largo"] = float(st.session_state[lar_key])
-
-    col_del, _ = st.columns([1,3])
-    with col_del:
-        if st.button("🗑️ Eliminar bulto", key=f"del_row_{i}", use_container_width=True):
-            if len(st.session_state.rows) > 1:
-                st.session_state.rows.pop(i)
-            else:
-                st.session_state.rows = [{"cant":0, "ancho":0, "alto":0, "largo":0}]
-            for k in [cant_key, an_key, al_key, lar_key]:
-                if k in st.session_state: del st.session_state[k]
-            st.rerun()
-    st.markdown('<div class="gt-item-divider"></div>', unsafe_allow_html=True)
-
-st.markdown('<div class="gt-actions-row">', unsafe_allow_html=True)
-ba, bb = st.columns(2)
-with ba: st.button("➕ Agregar bulto", on_click=add_row, use_container_width=True, key="add_row_btn")
-with bb: st.button("🧹 Vaciar bultos", on_click=clear_rows, use_container_width=True, key="clear_rows_btn")
-st.markdown('</div>', unsafe_allow_html=True)
-
-total_peso_vol = compute_total_vol(st.session_state.rows)
-st.caption(f"**Peso volumétrico total (kg):** {total_peso_vol:,.2f}")
-st.markdown('</div>', unsafe_allow_html=True)
-st.markdown('<div class="gt-section"><div class="gt-divider"></div></div>', unsafe_allow_html=True)
-
-# -------------------- Peso & Valor --------------------
-st.markdown('<div class="gt-section">', unsafe_allow_html=True)
-st.subheader("Datos para validar")
-c_w, c_v = st.columns([1.0, 1.0])
-with c_w:
-    st.number_input("Peso total (kg)", min_value=0.0, step=0.1, key="peso_bruto_num",
-                    help="Usá punto o coma para decimales (ej: 1.25)")
-    st.session_state.peso_bruto = float(st.session_state.peso_bruto_num)
-with c_v:
-    st.number_input("Valor total (USD)", min_value=0.0, step=1.0, key="valor_mercaderia_num",
-                    placeholder="Ej: 2500.00")
-    st.session_state.valor_mercaderia = float(st.session_state.valor_mercaderia_num)
-peso_aplicable = max(total_peso_vol, st.session_state.peso_bruto)
-st.markdown(f"<div class='gt-pill' style='display:inline-flex;align-items:center;gap:8px;'><span>Peso aplicable (kg) 🔒</span> <b>{peso_aplicable:,.2f}</b></div>", unsafe_allow_html=True)
-st.markdown('</div>', unsafe_allow_html=True)
-st.markdown('<div class="gt-section"><div class="gt-divider"></div></div>', unsafe_allow_html=True)
-
 # -------------------- Submit --------------------
 st.markdown('<div id="gt-submit-btn" class="gt-section">', unsafe_allow_html=True)
 submit_clicked = st.button("🔎 Validar producto", use_container_width=True, key="gt_submit_btn")
@@ -382,9 +283,7 @@ if submit_clicked:
             },
             "pais_origen": pais_final,
             "productos": productos_validos,
-            "bultos": st.session_state.rows,
-            "pesos": { "bruto_kg": st.session_state.peso_bruto },
-            "valor_mercaderia_usd": st.session_state.valor_mercaderia
+            # Nota: ya no enviamos pesos/valor ni bultos
         }
         ok, msg = post_to_webhook(payload)
         st.session_state.post_status = {"ok": ok, "msg": msg}
