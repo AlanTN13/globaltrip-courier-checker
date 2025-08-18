@@ -88,7 +88,7 @@ div[data-testid="stNumberInput"] button{
 [data-testid="stRadio"] label p{ margin:0 !important; font-size:0.95rem !important; color:var(--ink) !important; }
 [data-testid="stRadio"] input[type="radio"]{ transform:scale(0.9); accent-color:#0e1b3d; }
 
-/* Botones Streamlit (forzar look claro) */
+/* Botones Streamlit */
 div.stButton{ margin:0 !important; }
 div.stButton > button,
 button[kind="secondary"],
@@ -112,7 +112,7 @@ button[kind="primary"]:hover,
   background:#eef3ff !important; color:var(--ink) !important;
 }
 
-/* Alerts con texto oscuro */
+/* Alerts */
 div[data-testid="stAlert"]{
   border:1.5px solid #f2c8c8 !important; background:#fdeeee !important; color:var(--ink) !important;
   border-radius:16px !important;
@@ -160,14 +160,18 @@ div[data-testid="stTextArea"] label{
 # -------------------- Estado --------------------
 def init_state():
     st.session_state.setdefault("productos", [{"descripcion":"", "link":""}])
+    st.session_state.setdefault("rows", [{"cant":0, "ancho":0, "alto":0, "largo":0}])  # BULTOS
     st.session_state.setdefault("nombre","")
     st.session_state.setdefault("email","")
     st.session_state.setdefault("telefono","")
     st.session_state.setdefault("pais_origen","China")
     st.session_state.setdefault("pais_origen_otro","")
-    st.session_state.setdefault("peso_bruto_raw","0.00")
+
+    # defaults para number_input (no se reescriben en cada render)
+    st.session_state.setdefault("peso_bruto_num", 0.0)
+    st.session_state.setdefault("valor_mercaderia_num", 0.0)
+
     st.session_state.setdefault("peso_bruto",0.0)
-    st.session_state.setdefault("valor_mercaderia_raw","0.00")
     st.session_state.setdefault("valor_mercaderia",0.0)
     st.session_state.setdefault("show_dialog", False)
     st.session_state.setdefault("form_errors", [])
@@ -175,11 +179,23 @@ def init_state():
 init_state()
 
 # -------------------- Helpers --------------------
+FACTOR_VOL = 5000
 def to_float(s, default=0.0):
     try:
         return float(str(s).replace(",",".")) if s not in (None,"") else default
     except:
         return default
+
+def compute_total_vol(rows):
+    total = 0.0
+    for r in rows:
+        total += (
+            to_float(r.get("cant",0)) *
+            to_float(r.get("ancho",0)) *
+            to_float(r.get("alto",0)) *
+            to_float(r.get("largo",0))
+        ) / FACTOR_VOL
+    return round(total, 2)
 
 def post_to_webhook(payload: dict):
     url = st.secrets.get("N8N_WEBHOOK_URL", os.getenv("N8N_WEBHOOK_URL",""))
@@ -202,13 +218,24 @@ def validate():
     if not st.session_state.telefono.strip(): errs.append("• Teléfono es obligatorio.")
     if not any(p["descripcion"].strip() and p["link"].strip() for p in st.session_state.productos):
         errs.append("• Cargá al menos un producto con descripción y link.")
-    if st.session_state.pais_origen == "Otro" and not st.session_state.pais_origen_otro.strip():
+    if st.session_state.pais_origen == "Otro" and not (st.session_state.pais_origen_otro or "").strip():
         errs.append("• Indicá el país de origen.")
+    # No obligo bultos en el validador, pero podrías exigir al menos uno:
+    # if not any(to_float(r["cant"])>0 for r in st.session_state.rows): errs.append("• Ingresá al menos un bulto.")
     return errs
 
 # -------------------- Callbacks --------------------
-def add_producto(): st.session_state.productos.append({"descripcion":"", "link":""})
-def clear_productos(): st.session_state.productos = [{"descripcion":"", "link":""}]
+def add_producto():
+    st.session_state.productos.append({"descripcion":"", "link":""})
+
+def clear_productos():
+    st.session_state.productos = [{"descripcion":"", "link":""}]
+
+def add_row():
+    st.session_state.rows.append({"cant":0, "ancho":0, "alto":0, "largo":0})
+
+def clear_rows():
+    st.session_state.rows = [{"cant":0, "ancho":0, "alto":0, "largo":0}]
 
 # -------------------- Header --------------------
 st.markdown("""
@@ -231,21 +258,20 @@ with c3:
 st.markdown('</div>', unsafe_allow_html=True)
 st.markdown('<div class="gt-section"><div class="gt-divider"></div></div>', unsafe_allow_html=True)
 
-# -------------------- País de origen --------------------
+# -------------------- País de origen (fix sin index/value) --------------------
 st.markdown('<div class="gt-section">', unsafe_allow_html=True)
 st.subheader("País de origen de los productos a validar")
-sel = st.radio(
+
+st.radio(
     "Seleccioná el país de origen:",
     ["China", "Otro"],
-    index=(0 if st.session_state.pais_origen == "China" else 1),
+    key="pais_origen",
     horizontal=True,
-    key="origen_radio",
 )
-if sel == "Otro":
-    st.session_state.pais_origen = "Otro"
+
+if st.session_state.pais_origen == "Otro":
     st.text_input("Ingresá el país de origen", key="pais_origen_otro")
-else:
-    st.session_state.pais_origen = "China"
+
 st.markdown('</div>', unsafe_allow_html=True)
 st.markdown('<div class="gt-section"><div class="gt-divider"></div></div>', unsafe_allow_html=True)
 
@@ -285,16 +311,93 @@ st.markdown('</div>', unsafe_allow_html=True)
 st.markdown('</div>', unsafe_allow_html=True)
 st.markdown('<div class="gt-section"><div class="gt-divider"></div></div>', unsafe_allow_html=True)
 
-# -------------------- Peso & Valor --------------------
+# -------------------- Bultos (con anti-reset) --------------------
+st.markdown('<div class="gt-section">', unsafe_allow_html=True)
+st.subheader("Bultos")
+st.caption("Cargá por bulto: **cantidad** y **dimensiones en cm**. Calculamos el **peso volumétrico**.")
+
+for i, r in enumerate(st.session_state.rows):
+    # sembrar defaults solo una vez por widget, y NO pasar value=
+    cant_key = f"cant_{i}"
+    an_key   = f"an_{i}"
+    al_key   = f"al_{i}"
+    lar_key  = f"lar_{i}"
+    if cant_key not in st.session_state: st.session_state[cant_key] = int(r["cant"])
+    if an_key   not in st.session_state: st.session_state[an_key]   = float(r["ancho"])
+    if al_key   not in st.session_state: st.session_state[al_key]   = float(r["alto"])
+    if lar_key  not in st.session_state: st.session_state[lar_key]  = float(r["largo"])
+
+    st.markdown(f"**Bulto {i+1}**")
+    c1, c2, c3, c4 = st.columns([0.9, 1, 1, 1])
+    with c1:
+        st.number_input("Cantidad",  min_value=0,   step=1,   key=cant_key)
+        st.session_state.rows[i]["cant"]  = int(st.session_state[cant_key])
+    with c2:
+        st.number_input("Ancho (cm)", min_value=0.0, step=1.0, key=an_key)
+        st.session_state.rows[i]["ancho"] = float(st.session_state[an_key])
+    with c3:
+        st.number_input("Alto (cm)",  min_value=0.0, step=1.0, key=al_key)
+        st.session_state.rows[i]["alto"]  = float(st.session_state[al_key])
+    with c4:
+        st.number_input("Largo (cm)", min_value=0.0, step=1.0, key=lar_key)
+        st.session_state.rows[i]["largo"] = float(st.session_state[lar_key])
+
+    col_del, _ = st.columns([1,3])
+    with col_del:
+        if st.button("🗑️ Eliminar bulto", key=f"del_row_{i}", use_container_width=True):
+            if len(st.session_state.rows) > 1:
+                st.session_state.rows.pop(i)
+            else:
+                st.session_state.rows = [{"cant":0, "ancho":0, "alto":0, "largo":0}]
+            # limpiar keys del widget eliminado
+            for k in [cant_key, an_key, al_key, lar_key]:
+                if k in st.session_state: del st.session_state[k]
+            st.rerun()
+    st.markdown('<div class="gt-item-divider"></div>', unsafe_allow_html=True)
+
+# Acciones bultos
+st.markdown('<div class="gt-actions-row">', unsafe_allow_html=True)
+ba, bb = st.columns(2)
+with ba: st.button("➕ Agregar bulto", on_click=add_row, use_container_width=True, key="add_row_btn")
+with bb: st.button("🧹 Vaciar bultos", on_click=clear_rows, use_container_width=True, key="clear_rows_btn")
+st.markdown('</div>', unsafe_allow_html=True)
+
+# Resumen volumétrico
+total_peso_vol = compute_total_vol(st.session_state.rows)
+st.caption(f"**Peso volumétrico total (kg):** {total_peso_vol:,.2f}")
+st.markdown('</div>', unsafe_allow_html=True)
+st.markdown('<div class="gt-section"><div class="gt-divider"></div></div>', unsafe_allow_html=True)
+
+# -------------------- Peso & Valor (number_input con key, sin value) --------------------
 st.markdown('<div class="gt-section">', unsafe_allow_html=True)
 st.subheader("Datos para validar")
 c_w, c_v = st.columns([1.0, 1.0])
+
+# defaults ya sembrados en init_state
 with c_w:
-    st.text_input("Peso total (kg)", key="peso_bruto_raw", help="Usá punto o coma para decimales (ej: 1.25)")
-    st.session_state.peso_bruto = to_float(st.session_state.peso_bruto_raw, 0.0)
+    st.number_input(
+        "Peso total (kg)",
+        min_value=0.0,
+        step=0.1,
+        key="peso_bruto_num",
+        help="Usá punto o coma para decimales (ej: 1.25)",
+    )
+    st.session_state.peso_bruto = float(st.session_state.peso_bruto_num)
+
 with c_v:
-    st.text_input("Valor total (USD)", key="valor_mercaderia_raw", placeholder="Ej: 2500.00")
-    st.session_state.valor_mercaderia = to_float(st.session_state.valor_mercaderia_raw, 0.0)
+    st.number_input(
+        "Valor total (USD)",
+        min_value=0.0,
+        step=1.0,
+        key="valor_mercaderia_num",
+        placeholder="Ej: 2500.00",
+    )
+    st.session_state.valor_mercaderia = float(st.session_state.valor_mercaderia_num)
+
+# pill de peso aplicable (visual)
+peso_aplicable = max(total_peso_vol, st.session_state.peso_bruto)
+st.markdown(f"<div class='gt-pill' style='display:inline-flex;align-items:center;gap:8px;'><span>Peso aplicable (kg) 🔒</span> <b>{peso_aplicable:,.2f}</b></div>", unsafe_allow_html=True)
+
 st.markdown('</div>', unsafe_allow_html=True)
 st.markdown('<div class="gt-section"><div class="gt-divider"></div></div>', unsafe_allow_html=True)
 
@@ -310,7 +413,7 @@ if submit_clicked:
             {"descripcion": p["descripcion"].strip(), "link": p["link"].strip()}
             for p in st.session_state.productos if p["descripcion"].strip() and p["link"].strip()
         ]
-        pais_final = st.session_state.pais_origen if st.session_state.pais_origen == "China" else st.session_state.pais_origen_otro.strip()
+        pais_final = "China" if st.session_state.pais_origen == "China" else (st.session_state.pais_origen_otro or "").strip()
         payload = {
             "timestamp": datetime.utcnow().isoformat(),
             "origen": "streamlit-courier-checker",
@@ -321,7 +424,8 @@ if submit_clicked:
             },
             "pais_origen": pais_final,
             "productos": productos_validos,
-            "pesos": { "bruto_kg": st.session_state.peso_bruto },
+            "bultos": st.session_state.rows,  # añadimos bultos (misma forma que el otro)
+            "pesos": { "bruto_kg": st.session_state.peso_bruto },  # mantengo la clave original
             "valor_mercaderia_usd": st.session_state.valor_mercaderia
         }
         ok, msg = post_to_webhook(payload)
