@@ -67,6 +67,12 @@ div[data-testid="stTextInput"] input::placeholder,
 div[data-testid="stTextArea"] textarea::placeholder{ color:#94a3b8 !important; }
 textarea{ min-height:80px !important; }
 
+/* Radio (asegurar texto visible) */
+[data-testid="stRadio"] > label{ color:var(--ink) !important; font-weight:600 !important; }
+[data-testid="stRadio"] div[role="radiogroup"]{ display:flex !important; align-items:center !important; gap:12px !important; }
+[data-testid="stRadio"] label p{ margin:0 !important; color:var(--ink) !important; opacity:1 !important; font-weight:600 !important; }
+[data-testid="stRadio"] input[type="radio"]{ transform:scale(0.9); accent-color:#0e1b3d; }
+
 /* Botones Streamlit */
 div.stButton{ margin:0 !important; }
 div.stButton > button,
@@ -189,7 +195,7 @@ st.markdown('<div class="gt-section">', unsafe_allow_html=True)
 st.markdown(
     """
 <div class="soft-card" style="border-color:#dbe6ff;background:#f7faff">
-  <p style="margin:0 0 6px;color:#0e1b3d;"><b>Recordá las reglas del régimen courier:</b></p>
+  <p style="margin:0 0 6px;color:#0e1b3d;"><b>Recordá las reglas del courier:</b></p>
   <p style="margin:0;color:#0e1b3d;opacity:.95;"><i>
   El valor total de la compra no puede superar los <b>3000 dólares</b> y el
   <b>peso de cada bulto</b> no puede superar los <b>50 kilogramos brutos</b>.
@@ -241,12 +247,10 @@ for i, p in enumerate(st.session_state.productos):
     col_del, _ = st.columns([1,3])
     with col_del:
         if st.button("🗑️ Eliminar producto", key=f"del_prod_{i}", use_container_width=True):
-            # eliminar item
             if len(st.session_state.productos) > 1:
                 st.session_state.productos.pop(i)
             else:
                 st.session_state.productos = [{"descripcion":"", "link":""}]
-            # limpiar keys de widgets asociados
             for k in (f"prod_desc_{i}", f"prod_link_{i}"):
                 if k in st.session_state: del st.session_state[k]
             st.rerun()
@@ -283,7 +287,6 @@ if submit_clicked:
             },
             "pais_origen": pais_final,
             "productos": productos_validos,
-            # Nota: ya no enviamos pesos/valor ni bultos
         }
         ok, msg = post_to_webhook(payload)
         st.session_state.post_status = {"ok": ok, "msg": msg}
